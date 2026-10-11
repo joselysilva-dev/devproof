@@ -1,0 +1,10 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+<title id="title">DevProof — Seu trabalho, com evidências</title><desc id="desc">Entrega pública GitHub, confirmação por carteira e hash na Solana devnet. Protótipo de hackathon.</desc>
+<rect width="1200" height="630" fill="#0c1320"/><circle cx="1090" cy="95" r="190" fill="#151e2d"/>
+<text x="70" y="110" fill="#f5f7ff" font-family="Arial,sans-serif" font-size="48" font-weight="bold">DevProof</text><circle cx="306" cy="95" r="9" fill="#a3e635"/>
+<text x="70" y="230" fill="#a3e635" font-family="Arial,sans-serif" font-size="19" letter-spacing="3">SEU TRABALHO, COM EVIDÊNCIAS</text>
+<text x="70" y="305" fill="#f5f7ff" font-family="Arial,sans-serif" font-size="56" font-weight="bold">Mostre o que você construiu.</text>
+<g font-family="Arial,sans-serif"><rect x="70" y="370" width="320" height="120" rx="18" fill="#151e2d" stroke="#354052"/><text x="95" y="410" fill="#a3e635" font-size="16">01 / ENTREGA</text><text x="95" y="453" fill="#f5f7ff" font-size="25">Pull request público</text>
+<rect x="440" y="370" width="320" height="120" rx="18" fill="#151e2d" stroke="#354052"/><text x="465" y="410" fill="#a3e635" font-size="16">02 / CONFIRMAÇÃO</text><text x="465" y="453" fill="#f5f7ff" font-size="25">Assinatura da carteira</text>
+<rect x="810" y="370" width="320" height="120" rx="18" fill="#151e2d" stroke="#354052"/><text x="835" y="410" fill="#a3e635" font-size="16">03 / VERIFICAÇÃO</text><text x="835" y="453" fill="#f5f7ff" font-size="25">Hash na Solana devnet</text>
+<text x="70" y="566" fill="#b7c2d5" font-size="19">Protótipo de hackathon · React + FastAPI + SQLite · Somente rede de teste</text></g></svg>

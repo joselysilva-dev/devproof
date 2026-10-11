@@ -1,0 +1,78 @@
+﻿# Checklist de inscrição — DevProof
+
+O edital e a plataforma do hackathon não foram fornecidos. Os itens abaixo são materiais preparados e pendências para conferir contra as exigências reais; não se afirma que sejam todos obrigatórios.
+
+## Materiais preparados
+
+- [x] Código frontend React/TypeScript e backend FastAPI/httpx.
+- [x] SQLite real, configuração de exemplo sem segredos e dependências registradas.
+- [x] README em português com execução no Windows, arquitetura, segurança e limitações.
+- [x] Roteiro de demo de até três minutos: `docs/demo-script.md`.
+- [x] Roteiro de apresentação de até dois minutos: `docs/presentation-script.md`.
+- [x] Imagens `docs/assets/devproof.svg` e `docs/assets/devproof.png` (1200 × 630); PNG inspecionado visualmente.
+- [x] Repositório remoto conferido: https://github.com/joselysilva-dev/devproof. Publicação do código autorizada pelo usuário na branch `feat/devproof-mvp`, com pull request para `main`, sem merge ou envio da inscrição.
+
+## Evidências técnicas desta execução — 10/10/2026
+
+- [x] Backend: **23 testes passaram**. Há um aviso de depreciação do TestClient/Starlette por usar httpx, sem falha de teste; a integração HTTP de produção segue usando httpx conforme solicitado. Casos externos de falha são respostas controladas; não representam integrações reais concluídas.
+- [x] Frontend: `npm.cmd run build` e `npm.cmd run lint` passaram.
+- [x] Auditoria npm após ajuste de dependências: **zero vulnerabilidades reportadas**. Override de `jayson` 5 mantém a API legacy de web3.js e evita dependências transitivas vulneráveis; serialização Memo testada após a alteração.
+- [x] Consulta **real** ao GitHub: HTTP 200 para https://github.com/vitejs/vite/pull/23718, com título, autor, repositório e SHA retornados pela API. Caso inexistente também retornou HTTP 404 real.
+- [x] RPC **real**: genesis hash conferido e correspondente à Solana devnet.
+- [x] Transação Memo legacy construída, serializada e decodificada localmente: conteúdo e conta signatária conferidos. **Nenhuma transação foi enviada nesse teste.**
+- [x] Teste com API em processo HTTP real: declaração criada com consulta GitHub real em banco temporário; processo encerrado e reiniciado; ID/hash preservados e integridade válida. O resultado era rascunho, sem assinatura e sem registro.
+- [x] `.gitignore` verificado para `.venv`, `node_modules`, builds, bancos e `.env`; exemplos de configuração não são ignorados.
+- [ ] Teste visual/interativo da interface no navegador: a ferramenta informou nenhuma sessão disponível e `Browser is not available: iab`. Build/lint não substituem teste de navegação.
+
+## Teste manual informado pelo usuário — 10/10/2026
+
+- [x] Resultado manual relatado: **“Integridade válida. Assinatura de carteira: válida. Registro na devnet: verificado novamente.”**
+- [x] Transação real informada: [explorador Solana devnet](https://explorer.solana.com/tx/2icba75wX1daENqJYfFA21YxreaRZE9odPJKubAVjChKKWubuw2srSJ2GXaELgHr21mX6fQF95ZsxL4EgntEwmzC?cluster=devnet).
+- [x] Comprovante `b31eea34-26c2-4574-ad2d-117ecebac682` encontrado no SQLite local com estado `registrado` e a mesma assinatura de transação, mediante leitura somente leitura.
+- [x] PR do teste manual identificado no comprovante: [vitejs/vite#21015](https://github.com/vitejs/vite/pull/21015). **PR de terceiros, usado somente como teste técnico; sem alegação de autoria, participação no Vite ou colaboração real nessa entrega.** É diferente do PR #23718 consultado no teste técnico anterior.
+- [x] Banco do teste preservado; `.env`, ambientes virtuais, dependências, builds e bancos locais não fazem parte dos arquivos para commit. Exemplos `.env.example` podem ser versionados.
+- [x] Persistência do registro real confirmada manualmente pelo usuário após reiniciar a API: integridade, assinatura de carteira e registro na devnet continuam válidos. Essa confirmação manual é distinta dos testes automatizados de persistência com bancos temporários.
+
+O relato manual valida o fluxo técnico com carteira e registro devnet nesse caso. Ele é separado dos testes automatizados com fixtures. Nesta preparação, a evidência local foi conferida em modo somente leitura; não se afirma uma nova verificação independente no RPC ou uma inspeção visual do explorador.
+
+## Validações adicionais ainda pendentes
+
+- [ ] Ensaiar abertura do link em outro perfil/navegador com outra pessoa (o relato não confirmou esse cenário).
+- [ ] Testar rejeição da solicitação na carteira e nova tentativa sem duplicação na interface.
+- [x] Reiniciar API e confirmar persistência desse registro real: usuário confirmou integridade, assinatura e registro devnet válidos após a reinicialização.
+- [ ] Validar layout em celular, navegação por teclado e estados de erro no navegador.
+
+O fluxo técnico local com carteira e Solana devnet foi validado manualmente no caso informado. As validações adicionais e os materiais de inscrição continuam pendentes. Uma carteira não é identidade GitHub verificada nem prova autoria do PR.
+
+## Verificação repetida para preparar a entrega
+
+- [x] `backend/.venv/Scripts/python.exe -m pytest backend -q`: **23 passaram**, com um aviso de depreciação do TestClient por usar httpx.
+- [x] `npm.cmd run lint`: passou, sem erros.
+- [x] `npm.cmd run build`: passou, gerando o build local ignorado pelo Git.
+- [x] Nenhum `.env` real, ambiente virtual, `node_modules` ou banco local encontrado entre arquivos rastreados pelo Git. Regras de ignore conferidas; arquivos `.env.example` ficam disponíveis para commit.
+
+## Arquivos revisados para publicação
+
+Os arquivos abaixo compõem o MVP revisado para commit na branch `feat/devproof-mvp`. O status e o link do pull request serão informados ao concluir a publicação:
+
+- Modificados: `.gitignore`, `README.md`.
+- Backend novo: `backend/.env.example`, `backend/main.py`, `backend/requirements.txt`, `backend/test_main.py`.
+- Documentação nova: `docs/demo-script.md`, `docs/presentation-script.md`, `docs/submission-checklist.md`.
+- Imagens e gerador novos: `docs/assets/devproof.svg`, `docs/assets/devproof.png`, `docs/assets/render-image.ps1`.
+- Frontend novo: `frontend/.env.example`, `frontend/.gitignore`, `frontend/README.md`, `frontend/package.json`, `frontend/package-lock.json`, `frontend/eslint.config.js`, `frontend/index.html`, `frontend/vite.config.ts`, `frontend/tsconfig.json`, `frontend/tsconfig.app.json`, `frontend/tsconfig.node.json`.
+- Código e recursos novos: `frontend/src/App.tsx`, `frontend/src/App.css`, `frontend/src/index.css`, `frontend/src/main.tsx`, `frontend/public/favicon.svg`, `frontend/public/icons.svg`, `frontend/src/assets/hero.png`, `frontend/src/assets/react.svg`, `frontend/src/assets/vite.svg`. Recursos do scaffold existente foram preservados.
+
+Não incluir no commit o banco `backend/devproof.sqlite3` nem seus arquivos auxiliares, `.env` reais, `.venv`, `node_modules`, `dist` ou caches. O banco manual continua no computador.
+
+## Conferir no edital e preparar antes de submeter
+
+- [ ] Nome/categoria do hackathon, elegibilidade, prazo/fuso e regras sobre uso de IA.
+- [ ] Nome de equipe, participantes, contatos e consentimentos solicitados.
+- [ ] Título, descrição curta, problema, solução e tecnologias no formato exigido.
+- [ ] Licença do projeto e exigência de código público; revisar conteúdo antes de eventual push autorizado.
+- [ ] Vídeo real de demonstração, duração/formato e link de acesso exigidos.
+- [ ] Dimensões/tamanho/formato de imagem exigidos; usar os arquivos preparados ou adaptar.
+- [ ] URL hospedada, se exigida. O projeto está local; não houve deploy. Preparar controles de acesso e abuso antes de exposição pública.
+- [ ] Conferir links finais de repositório e demo exigidos pelo edital; o link do explorador do teste manual já está disponível acima.
+- [ ] Revisão de segredos, dados pessoais, alegações e limitações.
+- [ ] Envio da inscrição feito pelo usuário. Nenhuma inscrição foi enviada nesta sessão.

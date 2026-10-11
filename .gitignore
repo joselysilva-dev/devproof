@@ -218,3 +218,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+node_modules/
+dist/
+*.sqlite3*
+*.sqlite*
+*.db
+*.db-*
+.env.*
+!.env.example
+pytest-cache-files-*/
