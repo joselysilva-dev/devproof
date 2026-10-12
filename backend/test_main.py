@@ -127,3 +127,158 @@ def test_persistence_new_api(client,proof,monkeypatch):
     monkeypatch.setattr(reloaded,'DB',path)
     fresh=TestClient(reloaded.app)
     assert fresh.get('/comprovantes/'+proof['id']).json()['hash']==proof['hash']
+
+def test_pending_blocks_new_prepare(client,proof,monkeypatch):
+    p,_=confirm(client,proof)
+    p['pending_signature']=base58.b58encode(b'2'*64).decode()
+    with m.database() as con: m.save(con,p)
+    async def unexpected(*args): raise AssertionError('Não consultar blockhash nem permitir novo envio')
+    monkeypatch.setattr(m,'rpc',unexpected)
+    assert client.post(f"/comprovantes/{p['id']}/preparar-registro",json={}).status_code==409
+
+def test_pending_cannot_be_overwritten(client,proof):
+    p,_=confirm(client,proof)
+    p['pending_signature']=base58.b58encode(b'2'*64).decode()
+    with m.database() as con: m.save(con,p)
+    r=client.post(f"/comprovantes/{p['id']}/registrar",json={'signature':base58.b58encode(b'3'*64).decode()})
+    assert r.status_code==409
+    assert m.read_proof(p['id'])['pending_signature']==p['pending_signature']
+
+@pytest.mark.parametrize('failure',['rpc','timeout'])
+def test_rpc_diagnostic_and_signature_persisted(client,proof,monkeypatch,failure):
+    p,_=confirm(client,proof)
+    signature=base58.b58encode(b'2'*64).decode()
+    class MockClient:
+        def __init__(self,**kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self,*args): pass
+        async def post(self,*args,**kwargs):
+            assert m.read_proof(p['id'])['pending_signature']==signature
+            if failure=='timeout': raise httpx.ReadTimeout('Original read timed out')
+            return httpx.Response(200,json={'error':{'code':-32005,'message':'Original node unhealthy'}},request=httpx.Request('POST','https://api.devnet.solana.com'))
+    monkeypatch.setattr(m.httpx,'AsyncClient',MockClient)
+    response=client.post(f"/comprovantes/{p['id']}/registrar",json={'signature':signature})
+    assert response.status_code==(504 if failure=='timeout' else 503)
+    d=response.json()['detail']
+    assert d['code']==('ReadTimeout' if failure=='timeout' else -32005)
+    assert d['original_message']==('Original read timed out' if failure=='timeout' else 'Original node unhealthy')
+    stored=m.read_proof(p['id'])
+    assert stored['state']=='aguardando_registro'
+    assert stored['pending_signature']==signature
+    assert stored['error_diagnostic']==d
+
+@pytest.mark.parametrize('found',[False,True])
+def test_find_registration_only_reports_verified(client,proof,monkeypatch,found):
+    p,_=confirm(client,proof)
+    signature=base58.b58encode(b'2'*64).decode()
+    async def rpc(method,params=None):
+        if method=='getGenesisHash': return m.GENESIS
+        if method=='getSignaturesForAddress': return [{'signature':signature,'blockTime':p['confirmation']['confirmed_at']+1,'memo':None}]
+        tx=transaction(p,signature)
+        if not found: tx['transaction']['message']['instructions'][0]['data']=base58.b58encode(b'unrelated').decode()
+        return tx
+    monkeypatch.setattr(m,'rpc',rpc)
+    r=client.post(f"/comprovantes/{p['id']}/buscar-registro",json={})
+    assert r.status_code==200
+    assert r.json()['signatures']==([signature] if found else [])
+    # Descoberta não altera o comprovante nem declara registro concluído.
+    assert m.read_proof(p['id'])['state']=='confirmado_por_carteira'
+
+def recovery_proof(client,proof):
+    p,_=confirm(client,proof)
+    p['state']='aguardando_registro'
+    p['registration_attempt']={'id':'test-attempt','blockhash':'1'*32,'last_valid_block_height':100,'wallet':p['confirmation']['wallet'],'hash':p['hash']}
+    with m.database() as con: m.save(con,p)
+    return p
+
+def test_prepare_saves_expiry_and_blocks_duplicate(client,proof,monkeypatch):
+    p,_=confirm(client,proof)
+    async def rpc(method,params=None):
+        if method=='getGenesisHash': return m.GENESIS
+        assert method=='getLatestBlockhash'
+        return {'context':{'slot':321},'value':{'blockhash':'1'*32,'lastValidBlockHeight':100}}
+    monkeypatch.setattr(m,'rpc',rpc)
+    path=f"/comprovantes/{p['id']}/preparar-registro"
+    r=client.post(path,json={})
+    assert r.status_code==200
+    stored=m.read_proof(p['id'])
+    assert stored['registration_attempt']['last_valid_block_height']==100
+    assert stored['registration_attempt']['id']==r.json()['attempt_id']
+    assert stored['payload']==p['payload'] and stored['confirmation']==p['confirmation']
+    assert client.post(path,json={}).status_code==409
+
+@pytest.mark.parametrize('height',[99,100])
+def test_recovery_waits_at_expiry_boundary(client,proof,monkeypatch,height):
+    p=recovery_proof(client,proof)
+    async def rpc(method,params=None):
+        if method=='getGenesisHash': return m.GENESIS
+        assert method=='getBlockHeight'
+        return height
+    monkeypatch.setattr(m,'rpc',rpc)
+    r=client.post(f"/comprovantes/{p['id']}/recuperar-tentativa",json={})
+    assert r.status_code==200 and not r.json()['retry_allowed']
+    assert m.read_proof(p['id'])==p
+
+def test_legacy_creates_frontier_without_claiming_expiry(client,proof,monkeypatch):
+    p,_=confirm(client,proof)
+    p['state']='aguardando_registro'
+    with m.database() as con: m.save(con,p)
+    async def rpc(method,params=None):
+        if method=='getGenesisHash': return m.GENESIS
+        assert method=='getLatestBlockhash' and params==[{'commitment':'processed'}]
+        return {'context':{'slot':300},'value':{'blockhash':'1'*32,'lastValidBlockHeight':200}}
+    monkeypatch.setattr(m,'rpc',rpc)
+    r=client.post(f"/comprovantes/{p['id']}/recuperar-tentativa",json={})
+    assert not r.json()['retry_allowed']
+    stored=m.read_proof(p['id'])
+    assert stored['recovery']['last_valid_block_height']==200
+    assert stored['state']=='aguardando_registro'
+    assert stored['payload']==p['payload'] and stored['confirmation']==p['confirmation']
+
+@pytest.mark.parametrize('variant',['expired','valid_hash','rpc_error','pending_signature','found','missing_tx','race','wrong_network','full_page'])
+def test_recovery_conditions(client,proof,monkeypatch,variant):
+    p=recovery_proof(client,proof)
+    signature=base58.b58encode(b'4'*64).decode()
+    if variant=='pending_signature':
+        p['pending_signature']=signature
+        with m.database() as con: m.save(con,p)
+    async def rpc(method,params=None):
+        assert method!='sendTransaction'
+        if method=='getGenesisHash': return 'mainnet' if variant=='wrong_network' else m.GENESIS
+        if method=='getBlockHeight':
+            if variant=='rpc_error': raise m.HTTPException(503,'RPC unavailable')
+            return 101
+        if method=='isBlockhashValid': return {'value':variant=='valid_hash'}
+        if method=='getSignatureStatuses': return {'value':[{'err':None,'confirmationStatus':'processed'}]}
+        if method=='getSignaturesForAddress':
+            assert params[1]['commitment']=='finalized'
+            if variant=='race':
+                changed=m.read_proof(p['id']);changed['error']='Concurrent update'
+                with m.database() as con: m.save(con,changed)
+            if variant=='full_page':
+                page=0 if 'before' not in params[1] else int(params[1]['before'])//100+1
+                return [{'signature':str(page*100+i),'memo':'unrelated memo'} for i in range(100)]
+            return [{'signature':signature,'memo':None}] if variant in ('found','missing_tx') else []
+        if method=='getTransaction':
+            assert params[1]['commitment']=='finalized'
+            return None if variant=='missing_tx' else transaction(p,signature)
+        raise AssertionError(method)
+    monkeypatch.setattr(m,'rpc',rpc)
+    r=client.post(f"/comprovantes/{p['id']}/recuperar-tentativa",json={})
+    if variant=='expired':
+        assert r.status_code==200 and r.json()['retry_allowed']
+        stored=m.read_proof(p['id'])
+        assert stored['state']=='confirmado_por_carteira'
+        assert stored['payload']==p['payload'] and stored['confirmation']==p['confirmation']
+        assert stored['registration_history'][0]['attempt']==p['registration_attempt']
+        assert stored['registration_history'][0]['evidence']['finalized_block_height']==101
+        again=client.post(f"/comprovantes/{p['id']}/recuperar-tentativa",json={})
+        assert again.status_code==200 and again.json()['retry_allowed']
+        assert m.read_proof(p['id'])==stored
+    elif variant=='found':
+        assert r.status_code==200 and r.json()['registered'] and not r.json()['retry_allowed']
+        assert m.read_proof(p['id'])['transaction']['signature']==signature
+    else:
+        assert r.status_code in (400,409,503)
+        assert m.read_proof(p['id'])['state']=='aguardando_registro'
+        assert m.read_proof(p['id'])['registration_attempt']==p['registration_attempt']

@@ -16,6 +16,16 @@ Esse relato manual não é um teste automatizado nem uma nova consulta independe
 
 O usuário também confirmou manualmente a persistência após reiniciar a API: integridade, assinatura de carteira e registro na devnet continuam válidos. Essa evidência é separada dos testes automatizados com bancos temporários.
 
+## Teste manual do DevProof PR #1 — 11/10/2026
+
+Após a recuperação da tentativa inconclusiva, o usuário informou: **“Integridade válida. Assinatura de carteira: válida. Registro na devnet: verificado novamente.”**
+
+- Comprovante: `31ea2c22-13e5-43be-bd3b-0405a65bcb18`.
+- Entrega consultada: [DevProof PR #1](https://github.com/joselysilva-dev/devproof/pull/1).
+- [Transação informada na devnet](https://explorer.solana.com/tx/31NMaA79orBcMgYaawXsrzM17m7uSSPtPa8GEuguy3PagVoNDVBB3Bzsn85Y9Lj3nCUPzWbxCSv2Vk5hgHRpwk1Y?cluster=devnet).
+
+Esse resultado manual é separado dos testes automatizados com fixtures e do teste anterior com PR de terceiros. A carteira confirma a declaração como titular; não representa identidade GitHub verificada. Não se presume um teste de reinicialização para este novo registro. O banco e a cópia anterior à recuperação permanecem locais e fora do commit.
+
 ## Executar no Windows / PowerShell
 
 Requisitos: Python 3.11+ e Node.js compatível com o Vite instalado (22.12+ ou 24+), npm e extensão Phantom para as etapas de carteira.
@@ -52,7 +62,17 @@ Abra http://127.0.0.1:5173. API e documentação: http://127.0.0.1:8000/docs. N�
 6. Com a **mesma carteira**, clique em **Registrar hash na devnet**. Revise a transação Memo e aceite a taxa em SOL de teste. Nenhuma transferência de SOL é construída pelo aplicativo.
 7. Se a transação ainda não estiver confirmada, use **Verificar transação enviada**. A referência fica no navegador e, após tentativa de validação, no banco. Se você rejeitar a carteira antes do envio, tente registrar novamente.
 8. Abra o explorador pelo link do comprovante (com `cluster=devnet`) e clique em **Verificar integridade e registro**. Recarregue a página e reinicie a API para conferir persistência.
-9. Para uma transação comprovadamente incompatível, o estado fica `falha`; o botão de nova tentativa libera novo envio. Para RPC indisponível ou transação não encontrada, preserve a referência e aguarde: não reenvie sem conferir primeiro no explorador.
+9. Para uma transação incompatível, o estado fica `falha`, mas a assinatura é preservada. Uma assinatura pendente bloqueia novo envio na interface e na API. Para RPC indisponível ou transação não encontrada, consulte a mesma assinatura novamente; não reenvie sem resolver a tentativa anterior. O botão de apagar a referência e reenviar foi removido.
+
+## Diagnóstico e recuperação de registro
+
+Erros distinguem recusa explícita da Phantom (`4001`), falha de conexão/assinatura, falha de envio, timeout e falha de verificação. O painel **Diagnóstico técnico do erro** preserva etapa, categoria, código e mensagem originais, status HTTP quando disponível e assinatura pública recuperada. O aplicativo não interpreta todo erro com `code` como recusa do usuário.
+
+A referência retornada pela Phantom é guardada antes da verificação. Se o erro trouxer assinatura (ou a transação tiver sido assinada), a interface tenta consultar o registro antes de permitir outro envio. Erros de atualização da tela não substituem o erro original. O timeout da solicitação à carteira é de 90 segundos e não cancela uma operação da Phantom: uma resposta tardia ainda guarda a assinatura. Não abra outra solicitação enquanto a carteira tiver uma aprovação pendente.
+
+Na API, a assinatura é persistida antes da consulta RPC. Erros RPC preservam código e mensagem; timeout responde HTTP 504 e mantém `aguardando_registro`. **Buscar registro na devnet** procura até 100 transações confirmadas da carteira e só retorna assinaturas depois da validação real de rede, memo e signatário. A busca não marca sucesso nem considera a ausência de resultados prova de ausência de envio. Também é possível colar a assinatura pública do histórico da Phantom em **Consultar esta assinatura sem reenviar**.
+
+Uma tentativa inconclusiva permanece bloqueada até consultar sua referência ou usar **Recuperar tentativa verificando expiração**. Novas preparações guardam blockhash e última altura válida no backend. A recuperação exige altura finalizada acima do limite, blockhash inválido e consulta completa do histórico finalizado da carteira. RPC indisponível, histórico incompleto ou transação pendente mantêm o bloqueio. Tentativas antigas sem blockhash usam um marco posterior e aguardam sua expiração; o hash perdido não é inventado. Isso depende do RPC e do fluxo com blockhash recente, sem durable nonce. Não limpe o armazenamento nem apague o banco para contornar o bloqueio. Evidências e próximo teste: [docs/registration-diagnostics.md](docs/registration-diagnostics.md).
 
 ## Arquitetura e persistência
 

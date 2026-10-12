@@ -35,6 +35,15 @@ O edital e a plataforma do hackathon não foram fornecidos. Os itens abaixo são
 
 O relato manual valida o fluxo técnico com carteira e registro devnet nesse caso. Ele é separado dos testes automatizados com fixtures. Nesta preparação, a evidência local foi conferida em modo somente leitura; não se afirma uma nova verificação independente no RPC ou uma inspeção visual do explorador.
 
+## Teste manual do DevProof PR #1 — 11/10/2026
+
+- [x] Usuário informou após a recuperação: **“Integridade válida. Assinatura de carteira: válida. Registro na devnet: verificado novamente.”**
+- [x] Comprovante: `31ea2c22-13e5-43be-bd3b-0405a65bcb18`; entrega consultada: [DevProof PR #1](https://github.com/joselysilva-dev/devproof/pull/1).
+- [x] [Transação informada na Solana devnet](https://explorer.solana.com/tx/31NMaA79orBcMgYaawXsrzM17m7uSSPtPa8GEuguy3PagVoNDVBB3Bzsn85Y9Lj3nCUPzWbxCSv2Vk5hgHRpwk1Y?cluster=devnet).
+- [x] Teste manual distinto dos testes automatizados e do exemplo anterior com PR de terceiros; sem inferir identidade GitHub da carteira.
+- [x] Leitura local sem alteração do banco: estado `registrado`, integridade e assinatura da declaração válidas, transação igual à informada. Isso não é uma nova consulta ao RPC.
+- [ ] Confirmar persistência deste novo registro após reiniciar a API. O teste de reinicialização relatado anteriormente pertence ao outro comprovante.
+
 ## Validações adicionais ainda pendentes
 
 - [ ] Ensaiar abertura do link em outro perfil/navegador com outra pessoa (o relato não confirmou esse cenário).
@@ -46,14 +55,15 @@ O fluxo técnico local com carteira e Solana devnet foi validado manualmente no 
 
 ## Verificação repetida para preparar a entrega
 
-- [x] `backend/.venv/Scripts/python.exe -m pytest backend -q`: **23 passaram**, com um aviso de depreciação do TestClient por usar httpx.
+- [x] `backend/.venv/Scripts/python.exe -m pytest backend -q`: **42 passaram**, com um aviso de depreciação do TestClient por usar httpx. Inclui expiração, recuperação idempotente, histórico incompleto e concorrência.
+- [x] `npm.cmd run test`: **7 passaram**, cobrindo diagnóstico, referência pendente, falha de verificação e resposta tardia.
 - [x] `npm.cmd run lint`: passou, sem erros.
 - [x] `npm.cmd run build`: passou, gerando o build local ignorado pelo Git.
 - [x] Nenhum `.env` real, ambiente virtual, `node_modules` ou banco local encontrado entre arquivos rastreados pelo Git. Regras de ignore conferidas; arquivos `.env.example` ficam disponíveis para commit.
 
 ## Arquivos revisados para publicação
 
-Os arquivos abaixo compõem o MVP revisado para commit na branch `feat/devproof-mvp`. O status e o link do pull request serão informados ao concluir a publicação:
+O MVP já está no [PR #1](https://github.com/joselysilva-dev/devproof/pull/1), branch `feat/devproof-mvp`. Esta atualização inclui README, checklist, diagnóstico, backend e seus testes, frontend e seus testes e dependências registradas. A lista abaixo descreve os materiais do MVP original:
 
 - Modificados: `.gitignore`, `README.md`.
 - Backend novo: `backend/.env.example`, `backend/main.py`, `backend/requirements.txt`, `backend/test_main.py`.

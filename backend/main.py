@@ -78,24 +78,29 @@ async def rpc(method, params=None):
             response=await client.post(RPC,json={'jsonrpc':'2.0','id':1,'method':method,'params':params or []})
         response.raise_for_status()
         d=response.json()
-        if 'error' in d or 'result' not in d: raise ValueError()
+        if 'error' in d:
+            error = d['error']
+            raise HTTPException(503, {'category': 'rpc_failure', 'stage': 'verify', 'code': error.get('code'), 'original_message': error.get('message', ''), 'message': 'RPC da Solana recusou a consulta.', 'method': method})
+        if 'result' not in d: raise ValueError('Resposta RPC sem result.')
         return d['result']
-    except (httpx.HTTPError,ValueError):
-        raise HTTPException(503,'RPC da Solana indisponível. Tente verificar novamente.')
+    except httpx.TimeoutException as exc:
+        raise HTTPException(504, {'category': 'timeout', 'stage': 'verify', 'code': type(exc).__name__, 'original_message': str(exc), 'message': 'Tempo esgotado ao consultar a devnet. A transação pode ter sido enviada.', 'method': method}) from exc
+    except (httpx.HTTPError,ValueError) as exc:
+        raise HTTPException(503, {'category': 'rpc_failure', 'stage': 'verify', 'code': type(exc).__name__, 'original_message': str(exc), 'message': 'RPC da Solana indisponível. Tente verificar novamente.', 'method': method}) from exc
 
 async def devnet():
     if await rpc('getGenesisHash') != GENESIS: raise HTTPException(400,'Rede incompatível: somente Solana devnet é permitida.')
 
 def memo_text(proof): return 'devproof:v1:'+proof['hash']
 
-async def check_transaction(proof, signature):
+async def check_transaction(proof, signature, commitment='confirmed'):
     try:
         if len(base58.b58decode(signature)) != 64:
             raise ValueError()
     except ValueError:
         raise HTTPException(400, 'Formato da assinatura de transação inválido.')
     await devnet()
-    tx=await rpc('getTransaction',[signature,{'encoding':'json','commitment':'confirmed','maxSupportedTransactionVersion':0}])
+    tx=await rpc('getTransaction',[signature,{'encoding':'json','commitment':commitment,'maxSupportedTransactionVersion':0}])
     if tx is None: raise HTTPException(409,'Transação ainda não confirmada ou não encontrada na devnet.')
     try:
         message=tx['transaction']['message']
@@ -124,6 +129,9 @@ class Confirmation(BaseModel):
     signature: str=Field(max_length=100)
 class Transaction(BaseModel):
     signature: str=Field(min_length=64,max_length=90)
+
+class RecoveryRequest(BaseModel):
+    signature: str | None = Field(default=None, min_length=64, max_length=90)
 
 @app.get('/health')
 def health():
@@ -189,6 +197,10 @@ def integrity(proof):
 async def prepare(pid: str):
     proof=read_proof(pid)
     if not proof['confirmation'] or proof['state']=='registrado': raise HTTPException(409,'Confirme com a carteira antes de registrar; registro concluído é imutável.')
+    if proof.get('pending_signature'):
+        raise HTTPException(409, 'Há assinatura pendente. Consulte o registro antes de permitir outro envio.')
+    if proof['state'] == 'aguardando_registro' or proof.get('registration_attempt') or proof.get('recovery'):
+        raise HTTPException(409, 'Resolva a tentativa anterior pela recuperação com verificação de expiração.')
     integrity(proof)
     await devnet()
     block=await rpc('getLatestBlockhash',[{'commitment':'confirmed'}])
@@ -196,9 +208,14 @@ async def prepare(pid: str):
         con.execute('BEGIN IMMEDIATE')
         proof=read_proof(pid,con)
         if proof['state']=='registrado': raise HTTPException(409,'Comprovante já registrado.')
+        if proof.get('pending_signature'):
+            raise HTTPException(409, 'Há assinatura pendente. Consulte o registro antes de permitir outro envio.')
+        if proof['state'] == 'aguardando_registro' or proof.get('registration_attempt') or proof.get('recovery'):
+            raise HTTPException(409, 'Existe outra tentativa ativa. Verifique a expiração antes de preparar novamente.')
         proof.update(state='aguardando_registro',error=None)
+        proof['registration_attempt'] = {'id': str(uuid.uuid4()), 'blockhash': block['value']['blockhash'], 'last_valid_block_height': block['value']['lastValidBlockHeight'], 'context_slot': block['context']['slot'], 'wallet': proof['confirmation']['wallet'], 'hash': proof['hash'], 'prepared_at': int(time.time())}
         save(con,proof)
-    return {'memo':memo_text(proof),'program_id':MEMO,'wallet':proof['confirmation']['wallet'],**block['value']}
+    return {'memo':memo_text(proof),'program_id':MEMO,'wallet':proof['confirmation']['wallet'],'attempt_id':proof['registration_attempt']['id'],**block['value']}
 
 @app.post('/comprovantes/{pid}/registrar')
 async def register(pid: str,body: Transaction):
@@ -207,6 +224,19 @@ async def register(pid: str,body: Transaction):
     if proof['state']=='registrado':
         if proof['transaction']['signature']!=body.signature: raise HTTPException(409,'Comprovante já registrado com outra transação.')
         return proof
+    # Guarda a referência antes de chamar a rede; timeout ou queda não apaga o envio.
+    with database() as con:
+        con.execute('BEGIN IMMEDIATE')
+        current = read_proof(pid, con)
+        if current['state'] == 'registrado':
+            if current['transaction']['signature'] != body.signature:
+                raise HTTPException(409, 'Comprovante já registrado com outra transação.')
+            return current
+        if current.get('pending_signature') and current['pending_signature'] != body.signature:
+            raise HTTPException(409, 'Consulte primeiro a assinatura pendente; não substitua uma tentativa não resolvida.')
+        current['pending_signature'] = body.signature
+        current['state'] = 'aguardando_registro'
+        save(con, current)
     try:
         integrity(proof)
         result=await check_transaction(proof,body.signature)
@@ -215,7 +245,9 @@ async def register(pid: str,body: Transaction):
             con.execute('BEGIN IMMEDIATE')
             current=read_proof(pid,con)
             if current['state']!='registrado':
-                current.update(state='aguardando_registro' if exc.status_code in (409,503) else 'falha',error=exc.detail,pending_signature=body.signature)
+                detail = exc.detail
+                diagnostic = detail if isinstance(detail, dict) else {'category': 'verification_failure', 'stage': 'verify', 'code': exc.status_code, 'original_message': detail, 'message': detail}
+                current.update(state='aguardando_registro' if exc.status_code in (409,503,504) else 'falha',error=diagnostic['message'],error_diagnostic=diagnostic,pending_signature=body.signature)
                 save(con,current)
         raise
     with database() as con:
@@ -223,9 +255,33 @@ async def register(pid: str,body: Transaction):
         proof=read_proof(pid,con)
         if proof['state']=='registrado': return proof
         proof.update(state='registrado',transaction=result,error=None)
+        proof.pop('error_diagnostic', None)
         proof.pop('pending_signature',None)
         save(con,proof)
     return proof
+
+@app.post('/comprovantes/{pid}/buscar-registro')
+async def find_registration(pid: str):
+    """Busca limitada; ausência no histórico não é prova de que nunca houve envio."""
+    proof = read_proof(pid)
+    if not proof['confirmation']:
+        raise HTTPException(409, 'Confirmação de carteira necessária.')
+    integrity(proof)
+    await devnet()
+    signatures = await rpc('getSignaturesForAddress', [proof['confirmation']['wallet'], {'limit': 100, 'commitment': 'confirmed'}])
+    found = []
+    for entry in signatures:
+        if entry.get('blockTime') is not None and entry['blockTime'] < proof['confirmation']['confirmed_at']:
+            continue
+        if entry.get('memo') and proof['hash'] not in entry['memo']:
+            continue
+        try:
+            await check_transaction(proof, entry['signature'])
+            found.append(entry['signature'])
+        except HTTPException as exc:
+            if exc.status_code not in (400, 409):
+                raise
+    return {'signatures': found, 'scanned': len(signatures), 'limit': 100, 'message': 'A busca considera até 100 transações confirmadas. Ausência de resultado não exclui envio pendente ou fora desse histórico.'}
 
 @app.post('/comprovantes/{pid}/verificar')
 async def verify(pid: str):
@@ -233,3 +289,122 @@ async def verify(pid: str):
     integrity(proof)
     if proof['transaction']: await check_transaction(proof,proof['transaction']['signature'])
     return {'integrity':True,'wallet_signature':bool(proof['confirmation']),'onchain':bool(proof['transaction']),'network':'devnet','checked_at':int(time.time())}
+
+
+async def finalized_registration_scan(proof):
+    """Só uma busca paginada concluída permite decidir ausência no RPC confiável."""
+    options = {'limit': 100, 'commitment': 'finalized'}
+    scanned = 0
+    seen = set()
+    for _ in range(10):
+        page = await rpc('getSignaturesForAddress', [proof['confirmation']['wallet'], options])
+        for entry in page:
+            signature = entry['signature']
+            if signature in seen:
+                raise HTTPException(409, 'Histórico repetido pelo RPC; recuperação inconclusiva.')
+            seen.add(signature)
+            scanned += 1
+            if entry.get('memo') and proof['hash'] not in entry['memo']:
+                continue
+            try:
+                result = await check_transaction(proof, signature, commitment='finalized')
+                return result, scanned
+            except HTTPException as exc:
+                if exc.status_code != 400:
+                    # Mesmo um null para uma entrada do histórico deixa lacuna.
+                    raise
+        if len(page) < 100:
+            return None, scanned
+        options = {**options, 'before': page[-1]['signature']}
+    raise HTTPException(409, 'Limite de 1000 transações atingido. Histórico incompleto; bloqueio mantido.')
+
+
+@app.post('/comprovantes/{pid}/recuperar-tentativa')
+async def recover_attempt(pid: str, body: RecoveryRequest):
+    proof = read_proof(pid)
+    integrity(proof)
+    if not proof['confirmation']:
+        raise HTTPException(409, 'Confirmação de carteira necessária.')
+    await devnet()
+    if proof['state'] == 'registrado':
+        await check_transaction(proof, proof['transaction']['signature'])
+        return {'retry_allowed': False, 'registered': True, 'proof': proof, 'message': 'Registro existente verificado. Não reenvie.'}
+    if body.signature:
+        try:
+            if len(base58.b58decode(body.signature)) != 64:
+                raise ValueError()
+        except ValueError:
+            raise HTTPException(422, 'Assinatura pública de transação inválida.')
+        with database() as con:
+            con.execute('BEGIN IMMEDIATE')
+            current = read_proof(pid, con)
+            if canonical(current) != canonical(proof):
+                raise HTTPException(409, 'Tentativa mudou durante a consulta. Recarregue.')
+            if current.get('pending_signature') and current['pending_signature'] != body.signature:
+                raise HTTPException(409, 'A assinatura informada difere da tentativa pendente.')
+            current['pending_signature'] = body.signature
+            save(con, current)
+            proof = current
+    attempt = proof.get('registration_attempt')
+    frontier = proof.get('recovery')
+    history = proof.get('registration_history', [])
+    if (not attempt and not frontier and not proof.get('pending_signature')
+            and proof['state'] == 'confirmado_por_carteira' and history
+            and history[-1]['evidence']['reason'] == 'expired_and_finalized_history_checked'):
+        return {'retry_allowed': True, 'registered': False, 'proof': proof,
+                'evidence': history[-1]['evidence'],
+                'message': 'Tentativa anterior já recuperada. Uma nova tentativa pode ser preparada.'}
+    if not attempt and not frontier:
+        # Tentativa legada: não inventa o blockhash perdido. Um marco posterior
+        # limita a validade de qualquer hash preparado ANTES deste marco.
+        block = await rpc('getLatestBlockhash', [{'commitment': 'processed'}])
+        frontier = {'id': str(uuid.uuid4()), 'kind': 'legacy_expiry_frontier', 'blockhash': block['value']['blockhash'], 'last_valid_block_height': block['value']['lastValidBlockHeight'], 'context_slot': block['context']['slot'], 'wallet': proof['confirmation']['wallet'], 'hash': proof['hash'], 'started_at': int(time.time())}
+        with database() as con:
+            con.execute('BEGIN IMMEDIATE')
+            current = read_proof(pid, con)
+            if canonical(current) != canonical(proof):
+                raise HTTPException(409, 'Tentativa mudou durante a consulta. Recarregue.')
+            current['recovery'] = frontier
+            save(con, current)
+        return {'retry_allowed': False, 'registered': False, 'last_valid_block_height': frontier['last_valid_block_height'], 'proof': current, 'message': 'Marco de expiração criado para a tentativa antiga. Aguarde a altura finalizada ultrapassar o limite e consulte a recuperação novamente.'}
+    bound = attempt or frontier
+    if bound['wallet'] != proof['confirmation']['wallet'] or bound['hash'] != proof['hash']:
+        raise HTTPException(409, 'Dados da tentativa não correspondem ao comprovante. Bloqueio mantido.')
+    height = await rpc('getBlockHeight', [{'commitment': 'finalized'}])
+    limit = bound['last_valid_block_height']
+    if height <= limit:
+        return {'retry_allowed': False, 'registered': False, 'finalized_block_height': height, 'last_valid_block_height': limit, 'proof': proof, 'message': 'A rede finalizada ainda não ultrapassou o limite da tentativa. Bloqueio mantido.'}
+    valid = await rpc('isBlockhashValid', [bound['blockhash'], {'commitment': 'processed'}])
+    if valid['value']:
+        raise HTTPException(409, 'RPC ainda considera o blockhash válido. Bloqueio mantido.')
+    signature = proof.get('pending_signature')
+    if signature:
+        statuses = await rpc('getSignatureStatuses', [[signature], {'searchTransactionHistory': True}])
+        status = statuses['value'][0]
+        if status is not None and status.get('confirmationStatus') != 'finalized':
+            raise HTTPException(409, 'Transação conhecida ainda não finalizada. Consulte novamente; não reenvie.')
+        if status is not None and status.get('err') is None:
+            # Não libera uma assinatura bem-sucedida que o histórico possa omitir.
+            result = await check_transaction(proof, signature, commitment='finalized')
+            scanned = 1
+        else:
+            result, scanned = await finalized_registration_scan(proof)
+    else:
+        result, scanned = await finalized_registration_scan(proof)
+    evidence = {'checked_at': int(time.time()), 'network': 'devnet', 'genesis_hash': GENESIS, 'finalized_block_height': height, 'last_valid_block_height': limit, 'blockhash_valid': False, 'scanned': scanned, 'reason': 'existing_verified_registration' if result else 'expired_and_finalized_history_checked'}
+    with database() as con:
+        con.execute('BEGIN IMMEDIATE')
+        current = read_proof(pid, con)
+        if canonical(current) != canonical(proof):
+            raise HTTPException(409, 'Tentativa mudou durante a recuperação. Nenhum bloqueio foi removido.')
+        history = current.setdefault('registration_history', [])
+        history.append({'attempt': attempt, 'recovery': frontier, 'signature': signature, 'error': current.get('error'), 'diagnostic': current.get('error_diagnostic'), 'evidence': evidence})
+        for key in ('pending_signature', 'registration_attempt', 'recovery', 'error_diagnostic'):
+            current.pop(key, None)
+        current['error'] = None
+        if result:
+            current.update(state='registrado', transaction=result)
+        else:
+            current['state'] = 'confirmado_por_carteira'
+        save(con, current)
+    return {'retry_allowed': result is None, 'registered': result is not None, 'proof': current, 'evidence': evidence, 'message': 'Registro existente verificado; não reenvie.' if result else 'Tentativa anterior expirada e histórico finalizado conferido. Nova tentativa pode ser preparada sem refazer a declaração.'}
