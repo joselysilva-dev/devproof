@@ -228,9 +228,10 @@ dist/
 !.env.example
 pytest-cache-files-*/
 
-# Gravações locais de demonstração: publicar por link, não no Git
+# Gravações locais; somente o vídeo final de portfólio é versionado
 *.mp4
 *.mov
 *.webm
 *.mkv
 *.avi
+!docs/media/devproof-demo.mp4

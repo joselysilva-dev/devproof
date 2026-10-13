@@ -63,6 +63,17 @@ O fluxo técnico local com carteira e Solana devnet foi validado manualmente no 
 
 ## Arquivos revisados para publicação
 
+### Revisão final do PR #1 — 13/10/2026
+
+- [x] Correção na API: assinaturas de transação com Base58 inválido ou tamanho decodificado diferente de 64 bytes são rejeitadas antes de persistir uma referência pendente. Dois testes de regressão confirmam que o comprovante permanece intacto e o RPC não é chamado.
+- [x] Verificação final: **44 testes backend e 7 frontend passaram**, lint e build passaram; `pip check` não encontrou dependências incompatíveis. Permanece o aviso de depreciação TestClient/httpx.
+- [x] Vídeo final: MP4 H.264/AAC, 848 × 436, duração de 52,57 segundos; decodificação integral sem erros e inspeção de quadros da demonstração, incluindo a mensagem de verificação válida. Não representa um novo teste com carteira nesta revisão.
+- [x] Todos os destinos locais do README existem. PRs GitHub, faucet e documentação externa responderam HTTP 200. Os dois links do explorador Solana preservam `cluster=devnet`, mas retornaram HTTP 429 nesta consulta; acesso visual e conteúdo das transações não foram confirmados independentemente.
+- [x] Repositório público, sem arquivo de licença; README registra a decisão da autora de não conceder licença de reutilização. Instruções técnicas de execução preservadas.
+- [x] PR aberto, sem conflitos com `main`, sem reviews ou threads pendentes e sem verificações de CI configuradas no commit consultado. Validação realizada localmente; nenhum merge autorizado nesta etapa.
+
+Não foi identificado bloqueio técnico para incorporar o protótipo local à `main`. A conferência dos links do explorador foi limitada por HTTP 429. Celular, teclado e outro navegador continuam como validações manuais pendentes; os controles exigidos para hospedagem pública também permanecem fora do escopo deste MVP local.
+
 O MVP já está no [PR #1](https://github.com/joselysilva-dev/devproof/pull/1), branch `feat/devproof-mvp`. Esta atualização inclui README, checklist, diagnóstico, backend e seus testes, frontend e seus testes e dependências registradas. A lista abaixo descreve os materiais do MVP original:
 
 - Modificados: `.gitignore`, `README.md`.
@@ -76,11 +87,11 @@ Não incluir no commit o banco `backend/devproof.sqlite3` nem seus arquivos auxi
 
 ## Pendências atuais do portfólio
 
-- [ ] Disponibilizar o link final da demonstração; ainda não existe link final informado.
-- [ ] Escolher uma licença: não há licença própria declarada e nenhuma foi adicionada nesta revisão.
+- [x] Vídeo final disponível em [docs/media/devproof-demo.mp4](media/devproof-demo.mp4), vinculado no README.
+- [x] Decisão da autora: manter o repositório público para portfólio, sem adicionar licença de reutilização.
 - [ ] Validar celular, teclado e outro navegador.
 - [ ] Hospedar demo, se desejado, após preparar controles de acesso e abuso.
-- [x] Bancos, credenciais e gravações locais ficam fora do Git; vídeos devem ser disponibilizados por link.
+- [x] Bancos, credenciais e gravações brutas ficam fora do Git; somente o vídeo final de demonstração está versionado.
 
 ## Histórico de preparação da inscrição (prazo encerrado)
 

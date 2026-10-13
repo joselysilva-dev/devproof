@@ -6,7 +6,7 @@ Projeto de portfólio de uma estudante de Engenharia de Software, desenvolvido d
 
 ## Demonstração
 
-[Assista ao vídeo final do DevProof](docs/media/devproof-demo.mp4). O vídeo mostra um comprovante previamente registrado e sua verificação na Solana devnet. Há também um [roteiro de demo de até 3 minutos](docs/demo-script.md) e uma [imagem do projeto](docs/assets/devproof.png).
+[Assista ao vídeo final do DevProof](docs/media/devproof-demo.mp4) (53 segundos; use o botão de download do GitHub se o player não aparecer). O vídeo mostra um comprovante previamente registrado e sua verificação na Solana devnet. Há também um [roteiro de demo de até 3 minutos](docs/demo-script.md) e uma [imagem do projeto](docs/assets/devproof.png).
 
 O fluxo com carteira foi testado manualmente: consulta do PR, assinatura da declaração, registro do hash e nova verificação na devnet. A persistência do comprovante do PR #1 após reiniciar a API foi confirmada manualmente pela autora em 13/10/2026. As evidências e transações estão documentadas abaixo, separadas dos testes automatizados.
 
@@ -60,11 +60,11 @@ npm.cmd run lint
 npm.cmd run build
 ```
 
-Última validação: **42 testes backend e 7 frontend**, lint e build passaram. Os testes usam bancos temporários e respostas externas controladas; os testes manuais com Phantom são evidências separadas. Há um aviso de depreciação do TestClient/httpx. Layout móvel, teclado e uso em outro navegador ainda precisam de validação manual.
+Última validação: **44 testes backend e 7 frontend**, lint e build passaram. Os testes usam bancos temporários e respostas externas controladas; os testes manuais com Phantom são evidências separadas. Há um aviso de depreciação do TestClient/httpx. Layout móvel, teclado e uso em outro navegador ainda precisam de validação manual.
 
 ## Licença
 
-Não há arquivo de licença nem licença própria declarada no projeto. Nenhuma licença foi adicionada ou alterada nesta revisão. A escolha permanece pendente; as licenças das dependências são separadas da licença deste código.
+Por decisão da autora, não foi adicionada licença de reutilização ao DevProof. O repositório permanece público para apresentação no portfólio, sem concessão de licença de reutilização deste código. As dependências mantêm suas próprias licenças.
 
 ## Evidências dos testes manuais
 

@@ -184,6 +184,15 @@ def test_find_registration_only_reports_verified(client,proof,monkeypatch,found)
     # Descoberta não altera o comprovante nem declara registro concluído.
     assert m.read_proof(p['id'])['state']=='confirmado_por_carteira'
 
+@pytest.mark.parametrize('signature', ['0'*64, '2'*64])
+def test_invalid_transaction_signature_does_not_change_attempt(client,proof,monkeypatch,signature):
+    p,_=confirm(client,proof)
+    async def unexpected(*args): raise AssertionError('Formato inválido não deve consultar RPC')
+    monkeypatch.setattr(m,'rpc',unexpected)
+    r=client.post(f"/comprovantes/{p['id']}/registrar",json={'signature':signature})
+    assert r.status_code==400
+    assert m.read_proof(p['id'])==p
+
 def recovery_proof(client,proof):
     p,_=confirm(client,proof)
     p['state']='aguardando_registro'

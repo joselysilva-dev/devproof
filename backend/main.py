@@ -93,12 +93,15 @@ async def devnet():
 
 def memo_text(proof): return 'devproof:v1:'+proof['hash']
 
-async def check_transaction(proof, signature, commitment='confirmed'):
+def validate_transaction_signature(signature):
     try:
         if len(base58.b58decode(signature)) != 64:
             raise ValueError()
     except ValueError:
         raise HTTPException(400, 'Formato da assinatura de transação inválido.')
+
+async def check_transaction(proof, signature, commitment='confirmed'):
+    validate_transaction_signature(signature)
     await devnet()
     tx=await rpc('getTransaction',[signature,{'encoding':'json','commitment':commitment,'maxSupportedTransactionVersion':0}])
     if tx is None: raise HTTPException(409,'Transação ainda não confirmada ou não encontrada na devnet.')
@@ -219,6 +222,8 @@ async def prepare(pid: str):
 
 @app.post('/comprovantes/{pid}/registrar')
 async def register(pid: str,body: Transaction):
+    # Uma referência malformada não pode bloquear a recuperação de um envio real.
+    validate_transaction_signature(body.signature)
     proof=read_proof(pid)
     if not proof['confirmation']: raise HTTPException(409,'Confirmação de carteira necessária.')
     if proof['state']=='registrado':
