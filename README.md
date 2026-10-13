@@ -22,7 +22,7 @@ O fluxo com carteira foi testado manualmente: consulta do PR, assinatura da decl
 Requisitos: Git, Python 3.11+, Node.js 24+ (também usado pelos testes TypeScript), npm e extensão Phantom para as etapas de carteira.
 
 ```powershell
-git clone --branch feat/devproof-mvp https://github.com/joselysilva-dev/devproof.git
+git clone https://github.com/joselysilva-dev/devproof.git
 cd devproof
 python -m venv backend/.venv
 backend/.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
