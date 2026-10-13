@@ -1,7 +1,7 @@
 ﻿# Apresentação — até 2 minutos
 
 **0:00–0:25**
-“Sou estudante de Engenharia de Software. Estou desenvolvendo o DevProof como protótipo para este hackathon. Quem está começando precisa de formas claras de mostrar o trabalho que entregou.”
+“Sou estudante de Engenharia de Software. Desenvolvi o DevProof durante a preparação para um hackathon, com auxílio de IA. Não submeti o projeto no prazo e agora o apresento no meu portfólio. Ele explora formas de mostrar uma entrega com evidências verificáveis.”
 
 **0:25–0:55**
 “O DevProof consulta um pull request público na API do GitHub, guarda um snapshot da entrega e permite criar uma declaração. Um colaborador confirma essa declaração assinando com sua carteira. Essa confirmação vem do titular da carteira; não equivale à verificação de identidade GitHub.”

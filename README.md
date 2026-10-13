@@ -1,10 +1,74 @@
 ﻿# DevProof
 
-Protótipo de hackathon: consulta entregas públicas no GitHub, guarda uma declaração, recebe confirmação assinada pelo titular de uma carteira Phantom e registra SHA-256 no programa Memo da Solana **devnet**.
+O DevProof consulta um pull request público do GitHub, permite declarar uma entrega e recebe uma confirmação assinada por carteira. O hash do comprovante é registrado na Solana **devnet** e pode ser verificado novamente pelo aplicativo.
 
-**Situação:** o fluxo técnico local foi validado manualmente pelo usuário: integridade do comprovante, assinatura de carteira e registro na Solana devnet verificado novamente. Os testes automatizados são evidências separadas desse teste manual. Ainda há pendências de apresentação, inscrição e validações adicionais descritas no checklist; isso não representa uma publicação em produção.
+Projeto de portfólio de uma estudante de Engenharia de Software, desenvolvido durante a preparação para um hackathon, com auxílio de IA. **Não foi submetido no prazo** e não é apresentado como participante avaliado ou premiado. É um protótipo local, sem publicação em produção.
 
-## Teste manual com carteira — 10/10/2026
+## Demonstração
+
+O link final da demonstração ainda não está disponível. Há um [roteiro de demo de até 3 minutos](docs/demo-script.md) e uma [imagem do projeto](docs/assets/devproof.png).
+
+O fluxo com carteira foi testado manualmente: consulta do PR, assinatura da declaração, registro do hash e nova verificação na devnet. A persistência do comprovante do PR #1 após reiniciar a API foi confirmada manualmente pela autora em 13/10/2026. As evidências e transações estão documentadas abaixo, separadas dos testes automatizados.
+
+## Tecnologias
+
+- React, TypeScript e Vite na interface.
+- Python, FastAPI e httpx na API.
+- SQLite para persistência local; este MVP não usa PostgreSQL.
+- Phantom, Ed25519, SHA-256 e programa Memo da Solana devnet.
+
+## Instalação e execução
+
+Requisitos: Git, Python 3.11+, Node.js 24+ (também usado pelos testes TypeScript), npm e extensão Phantom para as etapas de carteira.
+
+```powershell
+git clone --branch feat/devproof-mvp https://github.com/joselysilva-dev/devproof.git
+cd devproof
+python -m venv backend/.venv
+backend/.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
+backend/.venv/Scripts/python.exe -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Em outro terminal, dentro da pasta `devproof`:
+
+```powershell
+cd frontend
+npm.cmd ci
+npm.cmd run dev -- --host 127.0.0.1
+```
+
+Abra http://127.0.0.1:5173; a documentação da API está em http://127.0.0.1:8000/docs. Os valores padrão permitem executar sem `.env`. Para personalizar, copie os exemplos somente se os arquivos de destino ainda não existirem:
+
+```powershell
+# Executar na raiz do projeto
+if (!(Test-Path backend/.env)) { Copy-Item backend/.env.example backend/.env }
+if (!(Test-Path frontend/.env)) { Copy-Item frontend/.env.example frontend/.env }
+```
+
+**Cada pessoa deve usar sua própria carteira na Solana devnet**, com SOL de teste. Quem confirma a declaração usa a mesma carteira para registrar o hash. Nunca forneça seed phrase ou chave privada ao aplicativo. O clone começa com um banco novo: os comprovantes locais da autora não são distribuídos, e o hash no explorador não substitui o conteúdo guardado no banco.
+
+## Limitações e testes
+
+A carteira confirma uma declaração, não identidade GitHub ou autoria do código. O protótipo usa somente devnet, depende das APIs do GitHub/Solana e ainda não possui os controles necessários para exposição pública. O banco guarda o conteúdo; a blockchain guarda apenas o hash. Não há demo hospedada.
+
+```powershell
+# Na raiz
+backend/.venv/Scripts/python.exe -m pytest backend -q
+cd frontend
+npm.cmd run test
+npm.cmd run lint
+npm.cmd run build
+```
+
+Última validação: **42 testes backend e 7 frontend**, lint e build passaram. Os testes usam bancos temporários e respostas externas controladas; os testes manuais com Phantom são evidências separadas. Há um aviso de depreciação do TestClient/httpx. Layout móvel, teclado e uso em outro navegador ainda precisam de validação manual.
+
+## Licença
+
+Não há arquivo de licença nem licença própria declarada no projeto. Nenhuma licença foi adicionada ou alterada nesta revisão. A escolha permanece pendente; as licenças das dependências são separadas da licença deste código.
+
+## Evidências dos testes manuais
+
+### Teste manual com carteira — 10/10/2026
 
 O usuário informou o resultado exibido pelo DevProof: **“Integridade válida. Assinatura de carteira: válida. Registro na devnet: verificado novamente.”**
 
@@ -16,7 +80,7 @@ Esse relato manual não é um teste automatizado nem uma nova consulta independe
 
 O usuário também confirmou manualmente a persistência após reiniciar a API: integridade, assinatura de carteira e registro na devnet continuam válidos. Essa evidência é separada dos testes automatizados com bancos temporários.
 
-## Teste manual do DevProof PR #1 — 11/10/2026
+### Teste manual do DevProof PR #1 — 11/10/2026
 
 Após a recuperação da tentativa inconclusiva, o usuário informou: **“Integridade válida. Assinatura de carteira: válida. Registro na devnet: verificado novamente.”**
 
@@ -24,33 +88,7 @@ Após a recuperação da tentativa inconclusiva, o usuário informou: **“Integ
 - Entrega consultada: [DevProof PR #1](https://github.com/joselysilva-dev/devproof/pull/1).
 - [Transação informada na devnet](https://explorer.solana.com/tx/31NMaA79orBcMgYaawXsrzM17m7uSSPtPa8GEuguy3PagVoNDVBB3Bzsn85Y9Lj3nCUPzWbxCSv2Vk5hgHRpwk1Y?cluster=devnet).
 
-Esse resultado manual é separado dos testes automatizados com fixtures e do teste anterior com PR de terceiros. A carteira confirma a declaração como titular; não representa identidade GitHub verificada. Não se presume um teste de reinicialização para este novo registro. O banco e a cópia anterior à recuperação permanecem locais e fora do commit.
-
-## Executar no Windows / PowerShell
-
-Requisitos: Python 3.11+ e Node.js compatível com o Vite instalado (22.12+ ou 24+), npm e extensão Phantom para as etapas de carteira.
-
-A partir da raiz do repositório:
-
-```powershell
-# Somente se o ambiente virtual ainda não existir
-python -m venv backend/.venv
-# Use o Python do ambiente virtual, sem precisar ativá-lo
-backend/.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
-Copy-Item backend/.env.example backend/.env
-backend/.venv/Scripts/python.exe -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-Em outro terminal:
-
-```powershell
-cd frontend
-npm.cmd ci
-Copy-Item .env.example .env
-npm.cmd run dev -- --host 127.0.0.1
-```
-
-Abra http://127.0.0.1:5173. API e documentação: http://127.0.0.1:8000/docs. Não copie os arquivos de exemplo por cima de configurações próprias existentes. O aplicativo funciona com os valores padrão mesmo sem `.env`.
+Esse resultado manual é separado dos testes automatizados com fixtures e do teste anterior com PR de terceiros. A carteira confirma a declaração como titular; não representa identidade GitHub verificada. Em **13/10/2026**, a autora confirmou manualmente a persistência deste comprovante após reiniciar a API: integridade, assinatura e registro na devnet continuam válidos. Não se alega nova consulta independente ao RPC nesta revisão. O banco e a cópia anterior à recuperação permanecem locais e fora do commit.
 
 ## Fluxo manual com carteira
 
@@ -60,7 +98,7 @@ Abra http://127.0.0.1:5173. API e documentação: http://127.0.0.1:8000/docs. N�
 4. O colaborador conecta Phantom e revisa a declaração antes de clicar em **Assinar confirmação**. A mensagem mostra carteira, URL da entrega, ID, hash, intenção, nonce e expiração. Essa etapa não gasta SOL.
 5. Na Phantom, habilite redes de teste e selecione **Solana devnet**. Use https://faucet.solana.com para obter SOL de teste. Nunca forneça seed phrase ou chave privada ao aplicativo.
 6. Com a **mesma carteira**, clique em **Registrar hash na devnet**. Revise a transação Memo e aceite a taxa em SOL de teste. Nenhuma transferência de SOL é construída pelo aplicativo.
-7. Se a transação ainda não estiver confirmada, use **Verificar transação enviada**. A referência fica no navegador e, após tentativa de validação, no banco. Se você rejeitar a carteira antes do envio, tente registrar novamente.
+7. Se a transação ainda não estiver confirmada, use **Verificar transação enviada**. A referência fica no navegador e, após tentativa de validação, no banco. Se rejeitar a solicitação antes do envio, use a recuperação com verificação de expiração antes de preparar outra tentativa.
 8. Abra o explorador pelo link do comprovante (com `cluster=devnet`) e clique em **Verificar integridade e registro**. Recarregue a página e reinicie a API para conferir persistência.
 9. Para uma transação incompatível, o estado fica `falha`, mas a assinatura é preservada. Uma assinatura pendente bloqueia novo envio na interface e na API. Para RPC indisponível ou transação não encontrada, consulte a mesma assinatura novamente; não reenvie sem resolver a tentativa anterior. O botão de apagar a referência e reenviar foi removido.
 
@@ -105,6 +143,7 @@ O snapshot não acompanha futuras mudanças no PR. O banco continua necessário 
 ```powershell
 backend/.venv/Scripts/python.exe -m pytest backend -q
 cd frontend
+npm.cmd run test
 npm.cmd run lint
 npm.cmd run build
 ```

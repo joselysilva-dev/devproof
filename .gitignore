@@ -227,3 +227,10 @@ dist/
 .env.*
 !.env.example
 pytest-cache-files-*/
+
+# Gravações locais de demonstração: publicar por link, não no Git
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.avi

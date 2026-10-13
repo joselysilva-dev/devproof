@@ -1,6 +1,6 @@
 ﻿# Checklist de inscrição — DevProof
 
-O edital e a plataforma do hackathon não foram fornecidos. Os itens abaixo são materiais preparados e pendências para conferir contra as exigências reais; não se afirma que sejam todos obrigatórios.
+O projeto foi desenvolvido durante a preparação para um hackathon, com auxílio de IA, mas não foi submetido no prazo. Não houve participação avaliada ou premiação. Este documento conserva o histórico de preparação e agora acompanha os materiais do portfólio. O edital e a plataforma não foram fornecidos; não se afirma que os itens abaixo sejam todos obrigatórios.
 
 ## Materiais preparados
 
@@ -42,7 +42,7 @@ O relato manual valida o fluxo técnico com carteira e registro devnet nesse cas
 - [x] [Transação informada na Solana devnet](https://explorer.solana.com/tx/31NMaA79orBcMgYaawXsrzM17m7uSSPtPa8GEuguy3PagVoNDVBB3Bzsn85Y9Lj3nCUPzWbxCSv2Vk5hgHRpwk1Y?cluster=devnet).
 - [x] Teste manual distinto dos testes automatizados e do exemplo anterior com PR de terceiros; sem inferir identidade GitHub da carteira.
 - [x] Leitura local sem alteração do banco: estado `registrado`, integridade e assinatura da declaração válidas, transação igual à informada. Isso não é uma nova consulta ao RPC.
-- [ ] Confirmar persistência deste novo registro após reiniciar a API. O teste de reinicialização relatado anteriormente pertence ao outro comprovante.
+- [x] Persistência deste comprovante após reiniciar a API confirmada manualmente pela autora em **13/10/2026**: integridade, assinatura de carteira e registro devnet continuam válidos. Evidência distinta dos testes automatizados; não é uma nova consulta independente ao RPC pelo agente.
 
 ## Validações adicionais ainda pendentes
 
@@ -53,7 +53,7 @@ O relato manual valida o fluxo técnico com carteira e registro devnet nesse cas
 
 O fluxo técnico local com carteira e Solana devnet foi validado manualmente no caso informado. As validações adicionais e os materiais de inscrição continuam pendentes. Uma carteira não é identidade GitHub verificada nem prova autoria do PR.
 
-## Verificação repetida para preparar a entrega
+## Verificação repetida para o portfólio — 13/10/2026
 
 - [x] `backend/.venv/Scripts/python.exe -m pytest backend -q`: **42 passaram**, com um aviso de depreciação do TestClient por usar httpx. Inclui expiração, recuperação idempotente, histórico incompleto e concorrência.
 - [x] `npm.cmd run test`: **7 passaram**, cobrindo diagnóstico, referência pendente, falha de verificação e resposta tardia.
@@ -74,7 +74,15 @@ O MVP já está no [PR #1](https://github.com/joselysilva-dev/devproof/pull/1), 
 
 Não incluir no commit o banco `backend/devproof.sqlite3` nem seus arquivos auxiliares, `.env` reais, `.venv`, `node_modules`, `dist` ou caches. O banco manual continua no computador.
 
-## Conferir no edital e preparar antes de submeter
+## Pendências atuais do portfólio
+
+- [ ] Disponibilizar o link final da demonstração; ainda não existe link final informado.
+- [ ] Escolher uma licença: não há licença própria declarada e nenhuma foi adicionada nesta revisão.
+- [ ] Validar celular, teclado e outro navegador.
+- [ ] Hospedar demo, se desejado, após preparar controles de acesso e abuso.
+- [x] Bancos, credenciais e gravações locais ficam fora do Git; vídeos devem ser disponibilizados por link.
+
+## Histórico de preparação da inscrição (prazo encerrado)
 
 - [ ] Nome/categoria do hackathon, elegibilidade, prazo/fuso e regras sobre uso de IA.
 - [ ] Nome de equipe, participantes, contatos e consentimentos solicitados.
