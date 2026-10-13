@@ -6,7 +6,7 @@ Projeto de portfólio de uma estudante de Engenharia de Software, desenvolvido d
 
 ## Demonstração
 
-O link final da demonstração ainda não está disponível. Há um [roteiro de demo de até 3 minutos](docs/demo-script.md) e uma [imagem do projeto](docs/assets/devproof.png).
+[Assista ao vídeo final do DevProof](docs/media/devproof-demo.mp4). O vídeo mostra um comprovante previamente registrado e sua verificação na Solana devnet. Há também um [roteiro de demo de até 3 minutos](docs/demo-script.md) e uma [imagem do projeto](docs/assets/devproof.png).
 
 O fluxo com carteira foi testado manualmente: consulta do PR, assinatura da declaração, registro do hash e nova verificação na devnet. A persistência do comprovante do PR #1 após reiniciar a API foi confirmada manualmente pela autora em 13/10/2026. As evidências e transações estão documentadas abaixo, separadas dos testes automatizados.
 
