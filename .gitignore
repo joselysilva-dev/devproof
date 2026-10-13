@@ -218,3 +218,20 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+node_modules/
+dist/
+*.sqlite3*
+*.sqlite*
+*.db
+*.db-*
+.env.*
+!.env.example
+pytest-cache-files-*/
+
+# Gravações locais; somente o vídeo final de portfólio é versionado
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.avi
+!docs/media/devproof-demo.mp4
